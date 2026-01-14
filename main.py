@@ -8,9 +8,14 @@ from dotenv import load_dotenv
 # Charger les variables d'environnement
 load_dotenv()
 
+# Définition des chemins persistants
+DATA_DIR = "data"
+os.makedirs(DATA_DIR, exist_ok=True) # Créer le dossier data s'il n'existe pas
+
 HP_URL = os.getenv("HP_URL")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-HISTORY_FILE = "grades_history.json"
+HISTORY_FILE = os.path.join(DATA_DIR, "grades_history.json")
+AUTH_FILE = os.path.join(DATA_DIR, "auth_state.json")
 CHECK_INTERVAL_SECONDS = int(os.getenv("CHECK_INTERVAL_SECONDS", 3600))
 HEADLESS_MODE = os.getenv("HEADLESS_MODE", "True").lower() == "true"
 
@@ -20,14 +25,13 @@ class HyperplanningBot:
         self.seen_grades = self.load_history()
 
     def ensure_auth_file(self):
-        auth_path = "auth_state.json"
         auth_env = os.getenv("AUTH_STATE_JSON")
         
-        if not os.path.exists(auth_path):
+        if not os.path.exists(AUTH_FILE):
             if auth_env:
                 print("Création du fichier auth_state.json à partir de la variable d'environnement...")
                 try:
-                    with open(auth_path, "w", encoding="utf-8") as f:
+                    with open(AUTH_FILE, "w", encoding="utf-8") as f:
                         f.write(auth_env)
                 except Exception as e:
                     print(f"Erreur lors de l'écriture du fichier auth : {e}")
@@ -94,9 +98,7 @@ class HyperplanningBot:
             print(f"Erreur lors de l'envoi Discord : {e}")
 
     def run(self):
-        auth_path = "auth_state.json"
-        
-        if not os.path.exists(auth_path):
+        if not os.path.exists(AUTH_FILE):
             print("Erreur: Fichier d'authentification introuvable.")
             print("Veuillez configurer la variable AUTH_STATE_JSON dans Portainer.")
             return
@@ -105,7 +107,7 @@ class HyperplanningBot:
             print(f"Lancement navigateur (Headless: {HEADLESS_MODE})...")
             browser = p.chromium.launch(headless=HEADLESS_MODE)
             try:
-                context = browser.new_context(storage_state=auth_path)
+                context = browser.new_context(storage_state=AUTH_FILE)
             except Exception as e:
                 print(f"Erreur chargement session: {e}.")
                 browser.close()

@@ -9,7 +9,7 @@ services:
       - CHECK_INTERVAL_SECONDS=3600 # Vérification toutes les heures
       - HEADLESS_MODE=True
     volumes:
-      # Persistance de l'historique des notes
-      - ./grades_history.json:/app/grades_history.json
-      # Persistance de la session d'authentification
-      - ./auth_state.json:/app/auth_state.json
+      - hyperplanning_data:/app/data
+
+volumes:
+  hyperplanning_data:
