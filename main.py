@@ -97,10 +97,27 @@ class HyperplanningBot:
         except Exception as e:
             print(f"Erreur lors de l'envoi Discord : {e}")
 
+    def send_error_notification(self, error_message):
+        embed = {
+            "title": "Erreur Critique - Bot Hyperplanning ⚠️",
+            "description": f"Une erreur est survenue lors de l'exécution :\n```{error_message}```",
+            "color": 15158332, # Rouge
+            "footer": {"text": "Veuillez vérifier les logs sur Portainer"}
+        }
+        data = {
+            "username": "HyperPlanning Bot (Erreur)",
+            "embeds": [embed]
+        }
+        try:
+            requests.post(DISCORD_WEBHOOK_URL, json=data)
+        except:
+            pass
+
     def run(self):
         if not os.path.exists(AUTH_FILE):
-            print("Erreur: Fichier d'authentification introuvable.")
-            print("Veuillez configurer la variable AUTH_STATE_JSON dans Portainer.")
+            msg = "Erreur: Fichier d'authentification introuvable. Configurez AUTH_STATE_JSON."
+            print(msg)
+            self.send_error_notification(msg)
             return
 
         with sync_playwright() as p:
@@ -109,7 +126,9 @@ class HyperplanningBot:
             try:
                 context = browser.new_context(storage_state=AUTH_FILE)
             except Exception as e:
-                print(f"Erreur chargement session: {e}.")
+                msg = f"Erreur chargement session: {e}"
+                print(msg)
+                self.send_error_notification(msg)
                 browser.close()
                 return
 
@@ -124,9 +143,15 @@ class HyperplanningBot:
                     print("Widget 'Dernières notes' détecté.")
                 except:
                     print("Timeout: Widget non trouvé.")
+                    # Ce n'est pas forcément une erreur critique (internet lent), mais on pourrait notifier si besoin
                 
                 parsed_grades = []
-                items = page.locator("section.notes ul.liste-clickable li").all()
+                # ... (rest of logic) ...
+                try:
+                    items = page.locator("section.notes ul.liste-clickable li").all()
+                except:
+                    items = []
+                
                 print(f"Extraction : {len(items)} notes trouvées.")
                 
                 for item in items:
@@ -143,7 +168,7 @@ class HyperplanningBot:
                         }
                         parsed_grades.append(grade_obj)
                     except Exception as e:
-                        pass # Ignorer les erreurs de parsing individuelles
+                        pass # Ignorer erreurs de parsing individuelles
 
                 new_grades_count = 0
                 self.seen_grades = self.load_history()
@@ -170,7 +195,9 @@ class HyperplanningBot:
                     print("Aucune nouvelle note.")
 
             except Exception as e:
-                print(f"Erreur pendant la navigation: {e}")
+                msg = f"Erreur pendant la navigation: {e}"
+                print(msg)
+                self.send_error_notification(msg)
             finally:
                 browser.close()
 
@@ -185,7 +212,12 @@ if __name__ == "__main__":
             try:
                 bot.run()
             except Exception as e:
-                print(f"Erreur critique lors de l'exécution : {e}")
+                msg = f"Erreur critique lors de l'exécution : {e}"
+                print(msg)
+                try:
+                    bot.send_error_notification(msg)
+                except:
+                    pass
             
             print(f"Mise en veille pour {CHECK_INTERVAL_SECONDS} secondes...")
             time.sleep(CHECK_INTERVAL_SECONDS)
